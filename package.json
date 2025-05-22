@@ -1,0 +1,27 @@
+{
+  "name": "lox-js",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Interpreter for the Lox language from craftinginterpreters.com",
+  "homepage": "https://github.com/pastelmind/lox-js#readme",
+  "bugs": {
+    "url": "https://github.com/pastelmind/lox-js/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pastelmind/lox-js.git"
+  },
+  "license": "GPL-3.0-only",
+  "author": "Yehyoung Kang <keepyourhonor@gmail.com>",
+  "type": "module",
+  "scripts": {
+    "check": "tsc -p jsconfig.json && biome check",
+    "fix": "biome check --write",
+    "start": "node src/index.js"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/node": "^22.15.21",
+    "typescript": "^5.8.3"
+  }
+}
