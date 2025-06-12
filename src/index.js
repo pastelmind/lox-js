@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import * as readline from "node:readline/promises";
 import { parseArgs } from "node:util";
+import { AstPrinter } from "./ast-printer.js";
+import { Parser } from "./parser.js";
 import { Reporter } from "./reporter.js";
 import { Scanner } from "./scanner.js";
 
@@ -68,10 +70,16 @@ async function runPrompt() {
  * @param {string} source
  */
 function run(source) {
-  const scanner = new Scanner(source, new Reporter());
+  const reporter = new Reporter();
+  const scanner = new Scanner(source, reporter);
   const tokens = scanner.scanTokens();
+  const parser = new Parser(tokens, reporter);
+  const expression = parser.parse();
 
-  for (const token of tokens) {
-    console.log(token);
+  // Stop if there was a syntax error
+  if (!expression) {
+    return;
   }
+
+  console.log(new AstPrinter().print(expression));
 }

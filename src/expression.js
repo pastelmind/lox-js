@@ -73,7 +73,7 @@ export class Grouping extends Expr {
 
 export class Literal extends Expr {
   /**
-   * @param {number | string | null} value
+   * @param {boolean | number | string | null} value
    */
   constructor(value) {
     super();
