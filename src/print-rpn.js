@@ -1,4 +1,4 @@
-import { Binary, Grouping, Literal, Unary } from "./expression.js";
+import { Binary, Grouping, Literal, Ternary, Unary } from "./expression.js";
 import { Token } from "./token.js";
 
 /**
@@ -38,7 +38,11 @@ class RpnPrinter {
    * @returns {string}
    */
   visitLiteral(expr) {
-    return expr.value === null ? "nil" : String(expr.value);
+    return expr.value === null
+      ? "nil"
+      : typeof expr.value === "string"
+        ? `"${expr.value}"`
+        : String(expr.value);
   }
 
   /**
@@ -47,6 +51,14 @@ class RpnPrinter {
    */
   visitUnary(expr) {
     return `${this.print(expr.right)} ${expr.operator.lexeme}`;
+  }
+
+  /**
+   * @param {Ternary} expr
+   * @returns {string}
+   */
+  visitTernary(expr) {
+    return `(? ${this.print(expr.cond)} ${this.print(expr.trueExpr)} ${this.print(expr.falseExpr)})`;
   }
 }
 
@@ -70,5 +82,12 @@ const expression2 = new Binary(
   ),
 );
 
+const expression3 = new Ternary(
+  new Literal(true),
+  new Literal("yes"),
+  new Ternary(new Literal(false), new Literal("no"), new Literal("maybe")),
+);
+
 console.log(new RpnPrinter().print(expression1));
 console.log(new RpnPrinter().print(expression2));
+console.log(new RpnPrinter().print(expression3));

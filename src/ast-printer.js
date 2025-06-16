@@ -5,6 +5,7 @@
  *   ExprVisitor,
  *   Grouping,
  *   Literal,
+ *   Ternary,
  *   Unary,
  * } from './expression.js'
  */
@@ -51,5 +52,13 @@ export class AstPrinter {
    */
   visitUnary(expr) {
     return `(${expr.operator.lexeme} ${this.print(expr.right)})`;
+  }
+
+  /**
+   * @param {Ternary} expr
+   * @returns {string}
+   */
+  visitTernary(expr) {
+    return `(${this.print(expr.cond)} ? ${this.print(expr.trueExpr)} : ${this.print(expr.falseExpr)})`;
   }
 }

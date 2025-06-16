@@ -98,6 +98,12 @@ export class Scanner {
       case "*":
         this.#addToken("STAR");
         break;
+      case "?":
+        this.#addToken("QUESTION");
+        break;
+      case ":":
+        this.#addToken("COLON");
+        break;
       case "!":
         this.#addToken(this.#match("=") ? "BANG_EQUAL" : "BANG");
         break;

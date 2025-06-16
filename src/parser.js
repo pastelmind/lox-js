@@ -3,7 +3,7 @@
 /** @import { Token } from './token.js'; */
 /** @import { TokenType } from './token-type.js' */
 
-import { Binary, Grouping, Literal, Unary } from "./expression.js";
+import { Binary, Grouping, Literal, Ternary, Unary } from "./expression.js";
 
 export class Parser {
   /** @readonly */
@@ -157,7 +157,51 @@ export class Parser {
    * @returns {Expr}
    */
   #expression() {
-    return this.#equality();
+    return this.#comma();
+  }
+
+  /**
+   * @returns {Expr}
+   */
+  #comma() {
+    let expr = this.#ternary();
+
+    while (this.#match("COMMA")) {
+      const operator = this.#previous();
+      const right = this.#ternary();
+      expr = new Binary(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  /**
+   * @returns {Expr}
+   */
+  #ternary() {
+    let expr = this.#equality();
+    let lastTernary = null;
+
+    while (this.#match("QUESTION")) {
+      const trueExpr = this.#equality();
+      this.#consume("COLON", "Expected ':' after '?' in ternary expression.");
+      const falseExpr = this.#equality();
+
+      if (lastTernary) {
+        /** @type {Ternary} */
+        const nextTernary = new Ternary(
+          lastTernary.falseExpr,
+          trueExpr,
+          falseExpr,
+        );
+        lastTernary.falseExpr = nextTernary;
+        lastTernary = nextTernary;
+      } else {
+        lastTernary = expr = new Ternary(expr, trueExpr, falseExpr);
+      }
+    }
+
+    return expr;
   }
 
   /**

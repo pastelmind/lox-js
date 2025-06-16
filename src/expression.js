@@ -7,6 +7,7 @@
  * @property {(expr: Grouping) => R} visitGrouping
  * @property {(expr: Literal) => R} visitLiteral
  * @property {(expr: Unary) => R} visitUnary
+ * @property {(expr: Ternary) => R} visitTernary
  */
 
 /**
@@ -113,5 +114,31 @@ export class Unary extends Expr {
    */
   accept(visitor) {
     return visitor.visitUnary(this);
+  }
+}
+
+export class Ternary extends Expr {
+  /**
+   * @param {Expr} cond
+   * @param {Expr} trueExpr
+   * @param {Expr} falseExpr
+   */
+  constructor(cond, trueExpr, falseExpr) {
+    super();
+    /** @readonly */
+    this.cond = cond;
+    /** @readonly */
+    this.trueExpr = trueExpr;
+    this.falseExpr = falseExpr;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {ExprVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitTernary(this);
   }
 }
