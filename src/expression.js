@@ -74,7 +74,7 @@ export class Grouping extends Expr {
 
 export class Literal extends Expr {
   /**
-   * @param {boolean | number | string | null} value
+   * @param {LoxValue} value
    */
   constructor(value) {
     super();

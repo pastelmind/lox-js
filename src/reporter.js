@@ -1,12 +1,19 @@
+/** @import { RuntimeError } from "./runtime-error.js"; */
+
 export class Reporter {
   /**
    * If true, the interpreter will not execute the current code, but only report
    * the errors.
    */
   #hadError = false;
+  #hadRuntimeError = false;
 
   get hadError() {
     return this.#hadError;
+  }
+
+  get hadRuntimeError() {
+    return this.#hadRuntimeError;
   }
 
   /**
@@ -25,5 +32,13 @@ export class Reporter {
   report(line, where, message) {
     console.error(`[line ${line}] Error${where}: ${message}`);
     this.#hadError = true;
+  }
+
+  /**
+   * @param {RuntimeError} error
+   */
+  runtimeError(error) {
+    console.error(`${error.message}\n[line ${error.token.line}]`);
+    this.#hadRuntimeError = true;
   }
 }
