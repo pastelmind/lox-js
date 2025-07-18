@@ -1,10 +1,12 @@
 import { readFile } from "node:fs/promises";
 import * as readline from "node:readline/promises";
 import { parseArgs } from "node:util";
-import { AstPrinter } from "./ast-printer.js";
+import { Interpreter } from "./interpreter.js";
 import { Parser } from "./parser.js";
 import { Reporter } from "./reporter.js";
 import { Scanner } from "./scanner.js";
+
+const interpreter = new Interpreter();
 
 await main();
 
@@ -48,7 +50,15 @@ Options:
 async function runFile(filename) {
   console.debug(`Running file: ${filename}`);
   const code = await readFile(filename, "utf-8");
-  run(code);
+  const reporter = new Reporter();
+  run(code, reporter);
+
+  if (reporter.hadError) {
+    process.exitCode = 65;
+  }
+  if (reporter.hadRuntimeError) {
+    process.exitCode = 70;
+  }
 }
 
 async function runPrompt() {
@@ -60,7 +70,7 @@ async function runPrompt() {
   for (;;) {
     const line = await rl.question("> ");
     if (!line) break;
-    run(line);
+    run(line, new Reporter());
   }
 
   rl.close();
@@ -68,9 +78,9 @@ async function runPrompt() {
 
 /**
  * @param {string} source
+ * @param {Reporter} reporter
  */
-function run(source) {
-  const reporter = new Reporter();
+function run(source, reporter) {
   const scanner = new Scanner(source, reporter);
   const tokens = scanner.scanTokens();
   const parser = new Parser(tokens, reporter);
@@ -80,6 +90,7 @@ function run(source) {
   if (!expression) {
     return;
   }
+  if (reporter.hadError) return;
 
-  console.log(new AstPrinter().print(expression));
+  interpreter.interpret(expression, reporter);
 }
