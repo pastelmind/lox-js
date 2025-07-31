@@ -210,7 +210,7 @@ export class Parser {
   #equality() {
     let expr = this.#comparison();
 
-    while (this.#match("EQUAL", "BANG_EQUAL")) {
+    while (this.#match("BANG_EQUAL", "EQUAL_EQUAL")) {
       const operator = this.#previous();
       const right = this.#comparison();
       expr = new Binary(expr, operator, right);
