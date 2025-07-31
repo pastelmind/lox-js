@@ -1,7 +1,7 @@
 /**
- * @import { Assign, Binary, Expr, ExprVisitor, Grouping, Literal, Ternary, Unary, Variable } from "./expression.js";
+ * @import { Assign, Binary, Expr, ExprVisitor, Grouping, Literal, Logical, Ternary, Unary, Variable } from "./expression.js";
  * @import { Reporter } from "./reporter.js";
- * @import { Block, Expression, Print, Stmt, StmtVisitor, Var } from "./statement.js";
+ * @import { Block, Expression, If, Print, Stmt, StmtVisitor, Var, While } from "./statement.js";
  * @import { Token } from "./token.js";
  */
 
@@ -93,6 +93,19 @@ export class Interpreter {
   }
 
   /**
+   * @param {If} stmt
+   * @returns {void}
+   */
+  visitIf(stmt) {
+    const condition = this.#evaluate(stmt.condition);
+    if (isTruthy(condition)) {
+      this.#execute(stmt.thenBranch);
+    } else if (stmt.elseBranch) {
+      this.#execute(stmt.elseBranch);
+    }
+  }
+
+  /**
    * @param {Print} stmt
    * @returns {void}
    */
@@ -110,6 +123,15 @@ export class Interpreter {
       ? this.#evaluate(stmt.initializer)
       : undefined;
     this.#environment.define(stmt.name.lexeme, value);
+  }
+
+  /**
+   * @param {While} stmt
+   */
+  visitWhile(stmt) {
+    while (isTruthy(this.#evaluate(stmt.condition))) {
+      this.#execute(stmt.body);
+    }
   }
 
   /**
@@ -203,6 +225,24 @@ export class Interpreter {
    */
   visitLiteral(expr) {
     return expr.value;
+  }
+
+  /**
+   * @param {Logical} expr
+   * @returns {LoxValue}
+   */
+  visitLogical(expr) {
+    const left = this.#evaluate(expr.left);
+
+    if (expr.operator.type === "OR") {
+      return isTruthy(left) ? left : this.#evaluate(expr.right);
+    }
+    if (expr.operator.type === "AND") {
+      return !isTruthy(left) ? left : this.#evaluate(expr.right);
+    }
+
+    // Unreachable
+    throw new Error(`Unexpected logical operator: ${expr.operator.type}`);
   }
 
   /**

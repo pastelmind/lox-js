@@ -7,6 +7,7 @@
  * @property {(expr: Binary) => R} visitBinary
  * @property {(expr: Grouping) => R} visitGrouping
  * @property {(expr: Literal) => R} visitLiteral
+ * @property {(expr: Logical) => R} visitLogical
  * @property {(expr: Unary) => R} visitUnary
  * @property {(expr: Ternary) => R} visitTernary
  * @property {(expr: Variable) => R} visitVariable
@@ -120,6 +121,33 @@ export class Literal extends Expr {
    */
   accept(visitor) {
     return visitor.visitLiteral(this);
+  }
+}
+
+export class Logical extends Expr {
+  /**
+   * @param {Expr} left
+   * @param {Token} operator
+   * @param {Expr} right
+   */
+  constructor(left, operator, right) {
+    super();
+    /** @readonly */
+    this.left = left;
+    /** @readonly */
+    this.operator = operator;
+    /** @readonly */
+    this.right = right;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {ExprVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitLogical(this);
   }
 }
 

@@ -8,11 +8,12 @@ import {
   Binary,
   Grouping,
   Literal,
+  Logical,
   Ternary,
   Unary,
   Variable,
 } from "./expression.js";
-import { Block, Expression, Print, Stmt, Var } from "./statement.js";
+import { Block, Expression, If, Print, Stmt, Var, While } from "./statement.js";
 
 export class Parser {
   /** @readonly */
@@ -207,6 +208,7 @@ export class Parser {
 
   /**
    * Parses a variable declaration statement.
+   * @returns {Var}
    */
   #varDeclaration() {
     const name = this.#consume("IDENTIFIER", "Expected variable name.");
@@ -218,8 +220,20 @@ export class Parser {
   }
 
   #statement() {
+    if (this.#match("FOR")) {
+      return this.#forStatement();
+    }
+
+    if (this.#match("IF")) {
+      return this.#ifStatement();
+    }
+
     if (this.#match("PRINT")) {
       return this.#printStatement();
+    }
+
+    if (this.#match("WHILE")) {
+      return this.#whileStatement();
     }
 
     if (this.#match("LEFT_BRACE")) {
@@ -232,7 +246,67 @@ export class Parser {
   }
 
   /**
+   * Parses a for-statement. (desugared to a while-statement)
+   * @returns {Block | While}
+   */
+  #forStatement() {
+    this.#consume("LEFT_PAREN", "Expected '(' after 'for'.");
+
+    const initializer = this.#match("SEMICOLON")
+      ? undefined
+      : this.#match("VAR")
+        ? this.#varDeclaration()
+        : this.#expressionStatement();
+
+    const condition = this.#check("SEMICOLON") ? undefined : this.#expression();
+    this.#consume("SEMICOLON", "Expected ';' after for-loop condition.");
+
+    const increment = this.#check("RIGHT_PAREN")
+      ? undefined
+      : this.#expression();
+    this.#consume("RIGHT_PAREN", "Expected ')' after for-loop clauses.");
+
+    // Work backwards to desugar the for-loop into a while-loop.
+
+    let body = this.#statement();
+
+    if (increment) {
+      body = new Block([body, new Expression(increment)]);
+    }
+
+    body = new While(condition ?? new Literal(true), body);
+
+    if (initializer) {
+      body = new Block([initializer, body]);
+    }
+
+    return body;
+  }
+
+  /**
+   * Parses an if-statement.
+   * @returns {If}
+   */
+  #ifStatement() {
+    this.#consume("LEFT_PAREN", "Expected '(' after 'if'.");
+    const condition = this.#expression();
+    this.#consume("RIGHT_PAREN", "Expected ')' after if condition.");
+
+    const thenBranch = this.#statement();
+    let elseBranch;
+
+    // Handle the dangling else problem by assigning the else-branch to the
+    // nearest (current) if-statement.
+    if (this.#match("ELSE")) {
+      elseBranch = this.#statement();
+    }
+
+    return new If(condition, thenBranch, elseBranch);
+  }
+
+  /**
    * Parses a print statement.
+   * @returns {Print}
    */
   #printStatement() {
     const value = this.#expression();
@@ -241,7 +315,21 @@ export class Parser {
   }
 
   /**
+   * Parses a while-statement.
+   * @returns {While}
+   */
+  #whileStatement() {
+    this.#consume("LEFT_PAREN", "Expected '(' after 'while'.");
+    const condition = this.#expression();
+    this.#consume("RIGHT_PAREN", "Expected ')' after while condition.");
+    const body = this.#statement();
+
+    return new While(condition, body);
+  }
+
+  /**
    * Parses an expression statement.
+   * @returns {Expression}
    */
   #expressionStatement() {
     const expr = this.#expression();
@@ -323,7 +411,7 @@ export class Parser {
    * @returns {Expr}
    */
   #assignment() {
-    const expr = this.#equality();
+    const expr = this.#or();
 
     if (this.#match("EQUAL")) {
       const equals = this.#previous();
@@ -338,6 +426,36 @@ export class Parser {
       // Report the error but do not throw, since the parser is not in a
       // confused state and can continue parsing.
       this.#error(equals, "Invalid assignment target.");
+    }
+
+    return expr;
+  }
+
+  /**
+   * @returns {Expr}
+   */
+  #or() {
+    let expr = this.#and();
+
+    while (this.#match("OR")) {
+      const operator = this.#previous();
+      const right = this.#and();
+      expr = new Logical(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  /**
+   * @returns {Expr}
+   */
+  #and() {
+    let expr = this.#equality();
+
+    while (this.#match("AND")) {
+      const operator = this.#previous();
+      const right = this.#equality();
+      expr = new Logical(expr, operator, right);
     }
 
     return expr;
