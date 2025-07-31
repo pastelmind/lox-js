@@ -3,7 +3,16 @@
 /** @import { Token } from './token.js'; */
 /** @import { TokenType } from './token-type.js' */
 
-import { Binary, Grouping, Literal, Ternary, Unary } from "./expression.js";
+import {
+  Assign,
+  Binary,
+  Grouping,
+  Literal,
+  Ternary,
+  Unary,
+  Variable,
+} from "./expression.js";
+import { Block, Expression, Print, Stmt, Var } from "./statement.js";
 
 export class Parser {
   /** @readonly */
@@ -23,21 +32,24 @@ export class Parser {
   }
 
   /**
-   * @returns {Expr | null}
+   * @returns {(Stmt)[]}
    */
   parse() {
-    try {
-      return this.#expression();
-    } catch (error) {
-      if (error instanceof ParseError) {
-        return null;
+    const statements = [];
+    while (!this.#isAtEnd()) {
+      const stmt = this.#declaration();
+      if (stmt) {
+        statements.push(stmt);
       }
-      throw error;
     }
+    return statements;
   }
 
+  /**
+   * @returns {boolean}
+   */
   #isAtEnd() {
-    return this.#current >= this.#tokens.length;
+    return this.#peek().type === "EOF";
   }
 
   /**
@@ -154,6 +166,89 @@ export class Parser {
   }
 
   /**
+   * Parses a declaration.
+   * This returns `undefined` when synchronizing after a parse error.
+   * @returns {Stmt | undefined}
+   */
+  #declaration() {
+    try {
+      if (this.#match("VAR")) {
+        return this.#varDeclaration();
+      }
+      return this.#statement();
+    } catch (error) {
+      if (error instanceof ParseError) {
+        this.#synchronize();
+        return;
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Parses a variable declaration statement.
+   */
+  #varDeclaration() {
+    const name = this.#consume("IDENTIFIER", "Expected variable name.");
+
+    const initializer = this.#match("EQUAL") ? this.#expression() : undefined;
+
+    this.#consume("SEMICOLON", "Expected ';' after variable declaration.");
+    return new Var(name, initializer);
+  }
+
+  #statement() {
+    if (this.#match("PRINT")) {
+      return this.#printStatement();
+    }
+
+    if (this.#match("LEFT_BRACE")) {
+      return new Block(this.#block());
+    }
+
+    // Since expression statements are difficult to deduce from the first token,
+    // we parse them as the last (fallthrough) case.
+    return this.#expressionStatement();
+  }
+
+  /**
+   * Parses a print statement.
+   */
+  #printStatement() {
+    const value = this.#expression();
+    this.#consume("SEMICOLON", "Expected ';' after value.");
+    return new Print(value);
+  }
+
+  /**
+   * Parses an expression statement.
+   */
+  #expressionStatement() {
+    const expr = this.#expression();
+    this.#consume("SEMICOLON", "Expected ';' after expression.");
+    return new Expression(expr);
+  }
+
+  /**
+   * Parses the contents of a block statement.
+   * @returns {Stmt[]}
+   */
+  #block() {
+    const statements = [];
+
+    while (!this.#check("RIGHT_BRACE") && !this.#isAtEnd()) {
+      const stmt = this.#declaration();
+      if (stmt) {
+        statements.push(stmt);
+      }
+    }
+
+    this.#consume("RIGHT_BRACE", "Expected '}' after block.");
+    return statements;
+  }
+
+  /**
    * @returns {Expr}
    */
   #expression() {
@@ -179,13 +274,13 @@ export class Parser {
    * @returns {Expr}
    */
   #ternary() {
-    let expr = this.#equality();
+    let expr = this.#assignment();
     let lastTernary = null;
 
     while (this.#match("QUESTION")) {
-      const trueExpr = this.#equality();
+      const trueExpr = this.#assignment();
       this.#consume("COLON", "Expected ':' after '?' in ternary expression.");
-      const falseExpr = this.#equality();
+      const falseExpr = this.#assignment();
 
       if (lastTernary) {
         /** @type {Ternary} */
@@ -199,6 +294,31 @@ export class Parser {
       } else {
         lastTernary = expr = new Ternary(expr, trueExpr, falseExpr);
       }
+    }
+
+    return expr;
+  }
+
+  /**
+   * Parses an assignment expression.
+   * @returns {Expr}
+   */
+  #assignment() {
+    const expr = this.#equality();
+
+    if (this.#match("EQUAL")) {
+      const equals = this.#previous();
+      const value = this.#assignment();
+
+      // Check if the left-hand expression is a storage location.
+      if (expr instanceof Variable) {
+        const name = expr.name;
+        return new Assign(name, value);
+      }
+
+      // Report the error but do not throw, since the parser is not in a
+      // confused state and can continue parsing.
+      this.#error(equals, "Invalid assignment target.");
     }
 
     return expr;
@@ -295,6 +415,10 @@ export class Parser {
 
     if (this.#match("NIL")) {
       return new Literal(null);
+    }
+
+    if (this.#match("IDENTIFIER")) {
+      return new Variable(this.#previous());
     }
 
     if (this.#match("LEFT_PAREN")) {

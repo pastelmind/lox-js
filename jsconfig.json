@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "checkJs": true,
+    "noImplicitReturns": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "module": "NodeNext",

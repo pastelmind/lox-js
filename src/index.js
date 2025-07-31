@@ -81,12 +81,12 @@ function run(source, reporter) {
   const scanner = new Scanner(source, reporter);
   const tokens = scanner.scanTokens();
   const parser = new Parser(tokens, reporter);
-  const expression = parser.parse();
+  const statements = parser.parse();
 
   // Stop if there was a syntax error
-  if (!expression || reporter.hadError) {
+  if (reporter.hadError) {
     return;
   }
 
-  interpreter.interpret(expression, reporter);
+  interpreter.interpret(statements, reporter);
 }
