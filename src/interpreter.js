@@ -16,6 +16,7 @@ export class Interpreter {
   #environment = new Environment();
 
   /**
+   * Interprets a sequence of statements.
    * @param {Iterable<Stmt>} statements
    * @param {Reporter} reporter
    */
@@ -24,6 +25,24 @@ export class Interpreter {
       for (const statement of statements) {
         this.#execute(statement);
       }
+    } catch (error) {
+      if (error instanceof RuntimeError) {
+        reporter.runtimeError(error);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Evaluates a single expression and prints its value.
+   * @param {Expr} expr
+   * @param {Reporter} reporter
+   */
+  interpretExpression(expr, reporter) {
+    try {
+      const value = this.#evaluate(expr);
+      console.log(stringify(value));
     } catch (error) {
       if (error instanceof RuntimeError) {
         reporter.runtimeError(error);

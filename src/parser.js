@@ -32,7 +32,8 @@ export class Parser {
   }
 
   /**
-   * @returns {(Stmt)[]}
+   * Parses the tokens as a sequence of statements.
+   * @returns {Stmt[]}
    */
   parse() {
     const statements = [];
@@ -43,6 +44,24 @@ export class Parser {
       }
     }
     return statements;
+  }
+
+  /**
+   * Parses the tokens as a single expression.
+   * Returns `undefined` if the parsing fails.
+   * @returns {Expr | undefined}
+   */
+  parseAsExpression() {
+    try {
+      const expression = this.#expression();
+      this.#consume("EOF", "Expected end of input after expression.");
+      return expression;
+    } catch (error) {
+      if (error instanceof ParseError) {
+        return;
+      }
+      throw error;
+    }
   }
 
   /**

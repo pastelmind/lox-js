@@ -67,7 +67,7 @@ async function runPrompt() {
   for (;;) {
     const line = await rl.question("> ");
     if (!line) break;
-    run(line, new Reporter());
+    run(line, new Reporter(), true);
   }
 
   rl.close();
@@ -76,11 +76,25 @@ async function runPrompt() {
 /**
  * @param {string} source
  * @param {Reporter} reporter
+ * @param {boolean=} allowSingleExpr Whether to allow running a single expression
  */
-function run(source, reporter) {
+function run(source, reporter, allowSingleExpr = false) {
   const scanner = new Scanner(source, reporter);
   const tokens = scanner.scanTokens();
   const parser = new Parser(tokens, reporter);
+
+  // Use heuristic to determine if the input is a single expression.
+  if (allowSingleExpr && tokens.every((token) => token.type !== "SEMICOLON")) {
+    // Attempt to parse a single expression
+    const expr = parser.parseAsExpression();
+
+    if (expr && !reporter.hadError) {
+      interpreter.interpretExpression(expr, reporter);
+    }
+
+    return;
+  }
+
   const statements = parser.parse();
 
   // Stop if there was a syntax error
