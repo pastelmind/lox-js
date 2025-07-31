@@ -105,9 +105,10 @@ export class Interpreter {
    * @param {Var} stmt
    */
   visitVar(stmt) {
-    // A variable without an initializer expression is implicitly initialized to
-    // `nil`.
-    const value = stmt.initializer ? this.#evaluate(stmt.initializer) : null;
+    // A variable without an initializer expression is marked as uninitialized.
+    const value = stmt.initializer
+      ? this.#evaluate(stmt.initializer)
+      : undefined;
     this.#environment.define(stmt.name.lexeme, value);
   }
 

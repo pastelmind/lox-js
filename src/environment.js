@@ -2,10 +2,13 @@ import { RuntimeError } from "./runtime-error.js";
 
 /** @import { Token } from './token.js' */
 
+/** Placeholder value for unitialized variables. */
+const UNINITIALIZED = Symbol("UNINITIALIZED");
+
 export class Environment {
   /**
    * @readonly
-   * @type {Map<string, LoxValue>}
+   * @type {Map<string, LoxValue | typeof UNINITIALIZED>}
    */
   #values = new Map();
   /**
@@ -26,13 +29,13 @@ export class Environment {
   /**
    * Defines a new variable or redefines an existing variable.
    * @param {string} name
-   * @param {LoxValue} value
+   * @param {LoxValue=} value
    */
   define(name, value) {
     // We do not check if the variable name already exists.
     // This allows users to redefine existing variables, which makes coding in
     // the REPL easier.
-    this.#values.set(name, value);
+    this.#values.set(name, value === undefined ? UNINITIALIZED : value);
   }
 
   /**
@@ -43,6 +46,14 @@ export class Environment {
    */
   get(name) {
     const value = this.#values.get(name.lexeme);
+
+    if (value === UNINITIALIZED) {
+      throw new RuntimeError(
+        name,
+        `Variable '${name.lexeme}' is not initialized.`,
+      );
+    }
+
     if (value !== undefined) {
       return value;
     }
