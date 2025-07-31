@@ -2,7 +2,13 @@ import { Binary, Grouping, Literal, Ternary, Unary } from "./expression.js";
 import { Token } from "./token.js";
 
 /**
- * @import { Assign, Expr, ExprVisitor, Variable } from './expression.js'
+ * @import {
+ *   Assign,
+ *   Expr,
+ *   ExprVisitor,
+ *   Logical,
+ *   Variable,
+ * } from './expression.js'
  */
 
 /**
@@ -51,6 +57,14 @@ class RpnPrinter {
       : typeof expr.value === "string"
         ? `"${expr.value}"`
         : String(expr.value);
+  }
+
+  /**
+   * @param {Logical} expr
+   * @returns {string}
+   */
+  visitLogical(expr) {
+    return `${this.print(expr.left)} ${this.print(expr.right)} ${expr.operator.lexeme}`;
   }
 
   /**

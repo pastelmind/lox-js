@@ -6,6 +6,7 @@
  *   ExprVisitor,
  *   Grouping,
  *   Literal,
+ *   Logical,
  *   Ternary,
  *   Unary,
  *   Variable,
@@ -54,6 +55,14 @@ export class AstPrinter {
    */
   visitLiteral(expr) {
     return expr.value === null ? "nil" : String(expr.value);
+  }
+
+  /**
+   * @param {Logical} expr
+   * @returns {string}
+   */
+  visitLogical(expr) {
+    return `(${expr.operator.lexeme} ${this.print(expr.left)} ${this.print(expr.right)})`;
   }
 
   /**

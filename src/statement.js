@@ -8,8 +8,10 @@
  * @typedef {object} StmtVisitor
  * @property {(expr: Block) => R} visitBlock Visits the block statement
  * @property {(expr: Expression) => R} visitExpression Visits the expression statement
+ * @property {(expr: If) => R} visitIf Visits the if-statement
  * @property {(expr: Print) => R} visitPrint Visits the print statement
  * @property {(expr: Var) => R} visitVar Visits the variable declaration statement
+ * @property {(expr: While) => R} visitWhile Visits the while-statement
  */
 
 /**
@@ -48,6 +50,36 @@ export class Block extends Stmt {
    */
   accept(visitor) {
     return visitor.visitBlock(this);
+  }
+}
+
+/**
+ * AST node for the if-statement.
+ */
+export class If extends Stmt {
+  /**
+   * @param {Expr} condition
+   * @param {Stmt} thenBranch
+   * @param {Stmt=} elseBranch
+   */
+  constructor(condition, thenBranch, elseBranch) {
+    super();
+    /** @readonly */
+    this.condition = condition;
+    /** @readonly */
+    this.thenBranch = thenBranch;
+    /** @readonly */
+    this.elseBranch = elseBranch;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {StmtVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitIf(this);
   }
 }
 
@@ -123,5 +155,32 @@ export class Var extends Stmt {
    */
   accept(visitor) {
     return visitor.visitVar(this);
+  }
+}
+
+/**
+ * AST node for the while-statement.
+ */
+export class While extends Stmt {
+  /**
+   * @param {Expr} condition
+   * @param {Stmt} body
+   */
+  constructor(condition, body) {
+    super();
+    /** @readonly */
+    this.condition = condition;
+    /** @readonly */
+    this.body = body;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {StmtVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitWhile(this);
   }
 }
