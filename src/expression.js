@@ -3,14 +3,17 @@
 /**
  * @template R Value returned by the visitor methods.
  * @typedef {object} ExprVisitor
+ * @property {(expr: Assign) => R} visitAssign
  * @property {(expr: Binary) => R} visitBinary
  * @property {(expr: Grouping) => R} visitGrouping
  * @property {(expr: Literal) => R} visitLiteral
  * @property {(expr: Unary) => R} visitUnary
  * @property {(expr: Ternary) => R} visitTernary
+ * @property {(expr: Variable) => R} visitVariable
  */
 
 /**
+ * AST node for Lox expressions.
  * @abstract
  */
 export class Expr {
@@ -21,6 +24,33 @@ export class Expr {
    */
   accept(_visitor) {
     throw new Error("Not implemented");
+  }
+}
+
+/**
+ * AST node for the assignment expression.
+ */
+export class Assign extends Expr {
+  /**
+   * @param {Token} name
+   * @param {Expr} value
+   */
+  constructor(name, value) {
+    super();
+    /** @readonly */
+    this.name = name;
+    /** @readonly */
+    this.value = value;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {ExprVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitAssign(this);
   }
 }
 
@@ -140,5 +170,29 @@ export class Ternary extends Expr {
    */
   accept(visitor) {
     return visitor.visitTernary(this);
+  }
+}
+
+/**
+ * AST node for the variable access expression.
+ */
+export class Variable extends Expr {
+  /**
+   * @param {Token} name
+   */
+  constructor(name) {
+    super();
+    /** @readonly */
+    this.name = name;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {ExprVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitVariable(this);
   }
 }

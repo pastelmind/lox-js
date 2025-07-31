@@ -1,5 +1,6 @@
 /**
  * @import {
+ *   Assign,
  *   Binary,
  *   Expr,
  *   ExprVisitor,
@@ -7,6 +8,7 @@
  *   Literal,
  *   Ternary,
  *   Unary,
+ *   Variable,
  * } from './expression.js'
  */
 
@@ -20,6 +22,14 @@ export class AstPrinter {
    */
   print(expr) {
     return expr.accept(this);
+  }
+
+  /**
+   * @param {Assign} expr
+   * @returns {string}
+   */
+  visitAssign(expr) {
+    return `(set ${expr.name} ${this.print(expr.value)})`;
   }
 
   /**
@@ -60,5 +70,13 @@ export class AstPrinter {
    */
   visitTernary(expr) {
     return `(${this.print(expr.cond)} ? ${this.print(expr.trueExpr)} : ${this.print(expr.falseExpr)})`;
+  }
+
+  /**
+   * @param {Variable} expr
+   * @returns {string}
+   */
+  visitVariable(expr) {
+    return `(var ${expr.name.lexeme})`;
   }
 }

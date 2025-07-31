@@ -1,23 +1,29 @@
 /**
- * @import { Binary, Expr, ExprVisitor, Grouping, Literal, Ternary, Unary } from "./expression.js";
+ * @import { Assign, Binary, Expr, ExprVisitor, Grouping, Literal, Ternary, Unary, Variable } from "./expression.js";
  * @import { Reporter } from "./reporter.js";
+ * @import { Block, Expression, Print, Stmt, StmtVisitor, Var } from "./statement.js";
  * @import { Token } from "./token.js";
  */
 
+import { Environment } from "./environment.js";
 import { RuntimeError } from "./runtime-error.js";
 
 /**
+ * @implements {StmtVisitor<void>}
  * @implements {ExprVisitor<LoxValue>}
  */
 export class Interpreter {
+  #environment = new Environment();
+
   /**
-   * @param {Expr} expr
+   * @param {Iterable<Stmt>} statements
    * @param {Reporter} reporter
    */
-  interpret(expr, reporter) {
+  interpret(statements, reporter) {
     try {
-      const value = this.#evaluate(expr);
-      console.log(stringify(value));
+      for (const statement of statements) {
+        this.#execute(statement);
+      }
     } catch (error) {
       if (error instanceof RuntimeError) {
         reporter.runtimeError(error);
@@ -28,12 +34,81 @@ export class Interpreter {
   }
 
   /**
+   * Executes a statement.
+   * @param {Stmt} stmt
+   */
+  #execute(stmt) {
+    stmt.accept(this);
+  }
+
+  /**
+   * Executes the contents of a block statement.
+   * @param {Iterable<Stmt>} statements
+   * @param {Environment} environment
+   */
+  #executeBlock(statements, environment) {
+    const previous = this.#environment;
+    this.#environment = environment;
+    try {
+      for (const statement of statements) {
+        this.#execute(statement);
+      }
+    } finally {
+      this.#environment = previous;
+    }
+  }
+
+  /**
+   * @param {Block} stmt
+   */
+  visitBlock(stmt) {
+    this.#executeBlock(stmt.statements, new Environment(this.#environment));
+  }
+
+  /**
+   * @param {Expression} stmt
+   * @returns {void}
+   */
+  visitExpression(stmt) {
+    this.#evaluate(stmt.expression);
+  }
+
+  /**
+   * @param {Print} stmt
+   * @returns {void}
+   */
+  visitPrint(stmt) {
+    const value = this.#evaluate(stmt.expression);
+    console.log(stringify(value));
+  }
+
+  /**
+   * @param {Var} stmt
+   */
+  visitVar(stmt) {
+    // A variable without an initializer expression is implicitly initialized to
+    // `nil`.
+    const value = stmt.initializer ? this.#evaluate(stmt.initializer) : null;
+    this.#environment.define(stmt.name.lexeme, value);
+  }
+
+  /**
    * Evaluates the expression and returns its value.
    * @param {Expr} expr
    * @returns {LoxValue}
    */
   #evaluate(expr) {
     return expr.accept(this);
+  }
+
+  /**
+   * @param {Assign} expr
+   * @returns {LoxValue}
+   */
+  visitAssign(expr) {
+    const value = this.#evaluate(expr.value);
+    this.#environment.assign(expr.name, value);
+    return value;
   }
 
   /**
@@ -136,6 +211,14 @@ export class Interpreter {
   visitTernary(expr) {
     const condition = this.#evaluate(expr.cond);
     return this.#evaluate(isTruthy(condition) ? expr.trueExpr : expr.falseExpr);
+  }
+
+  /**
+   * @param {Variable} expr
+   * @returns {LoxValue}
+   */
+  visitVariable(expr) {
+    return this.#environment.get(expr.name);
   }
 }
 

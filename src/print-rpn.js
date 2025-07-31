@@ -2,7 +2,7 @@ import { Binary, Grouping, Literal, Ternary, Unary } from "./expression.js";
 import { Token } from "./token.js";
 
 /**
- * @import { Expr, ExprVisitor } from './expression.js'
+ * @import { Assign, Expr, ExprVisitor, Variable } from './expression.js'
  */
 
 /**
@@ -15,6 +15,14 @@ class RpnPrinter {
    */
   print(expr) {
     return expr.accept(this);
+  }
+
+  /**
+   * @param {Assign} expr
+   * @returns {string}
+   */
+  visitAssign(expr) {
+    return `(${expr.name.lexeme} ${this.print(expr.value)} set)`;
   }
 
   /**
@@ -59,6 +67,14 @@ class RpnPrinter {
    */
   visitTernary(expr) {
     return `(? ${this.print(expr.cond)} ${this.print(expr.trueExpr)} ${this.print(expr.falseExpr)})`;
+  }
+
+  /**
+   * @param {Variable} expr
+   * @returns {string}
+   */
+  visitVariable(expr) {
+    return `(${expr.name.lexeme} var)`;
   }
 }
 
