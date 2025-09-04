@@ -5,15 +5,22 @@ An interpreter for the Lox language, written in JavaScript with TypeScript type 
 ## Grammar:
 
 ```ebnf
-program    -> declaration* EOF ;
-declaration -> var_decl
+program     -> declaration* EOF ;
+declaration -> fun_decl
+             | var_decl
              | statement ;
+
+fun_decl   -> "fun" function ;
+function   -> IDENTIFIER "(" parameters? ")" block ;
+parameters -> IDENTIFIER ( "," IDENTIFIER )* ;
+
 var_decl   -> "var" IDENTIFIER ( "=" expression )? ";" ;
 
 statement  -> expr_stmt
             | for_stmt
             | if_stmt
             | print_stmt
+            | return_stmt
             | while_stmt
             | block ;
 expr_stmt  -> expression ";" ;
@@ -22,6 +29,7 @@ for_stmt   -> "for" "(" ( var_decl | expr_stmt | ";" )
               expression? ")" statement;
 if_stmt    -> "if" "(" expression ")" statement ( "else" statement )? ;
 print_stmt -> "print" expression ";" ;
+return_stmt -> "return" expression? ";" ;
 while_stmt -> "while" "(" expression ")" statement;
 block      -> "{" declaration* "}" ;
 
@@ -37,7 +45,9 @@ comparison -> term ( ( "<" | "<=" | ">" | ">=" ) term )* ;
 term       -> factor ( ( "-" | "+" ) factor )* ;
 factor     -> unary ( ( "/" | "*" ) unary )* ;
 unary      -> ( "-" | "!" ) unary
-            | primary ;
+            | call ;
+call       -> primary ( "(" arguments? ")" )* ;
+arguments  -> ternary ( "," ternary )* ;
 primary    -> NUMBER | STRING | "false" | "true" | "nil"
             | "(" expression ")"
             | IDENTIFIER ;

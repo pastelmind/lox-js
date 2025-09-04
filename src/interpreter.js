@@ -1,11 +1,16 @@
 /**
- * @import { Assign, Binary, Expr, ExprVisitor, Grouping, Literal, Logical, Ternary, Unary, Variable } from "./expression.js";
+ * @import { Assign, Binary, Call, Expr, ExprVisitor, Grouping, Literal, Logical, Ternary, Unary, Variable } from "./expression.js";
  * @import { Reporter } from "./reporter.js";
- * @import { Block, Expression, If, Print, Stmt, StmtVisitor, Var, While } from "./statement.js";
+ * @import { Block, Expression, FunctionDecl, If, Print, Return, Stmt, StmtVisitor, Var, While } from "./statement.js";
  * @import { Token } from "./token.js";
+ * @import { LoxValue } from "./value.js";
  */
 
+import { Callable } from "./callable.js";
+import { ClockFunction } from "./clock.js";
 import { Environment } from "./environment.js";
+import { LoxFunction } from "./function.js";
+import { ReturnValue } from "./return.js";
 import { RuntimeError } from "./runtime-error.js";
 
 /**
@@ -13,7 +18,13 @@ import { RuntimeError } from "./runtime-error.js";
  * @implements {ExprVisitor<LoxValue>}
  */
 export class Interpreter {
-  #environment = new Environment();
+  /** @readonly */
+  #globals = new Environment();
+  #environment = this.#globals;
+
+  constructor() {
+    this.#globals.define("clock", new ClockFunction());
+  }
 
   /**
    * Interprets a sequence of statements.
@@ -62,10 +73,13 @@ export class Interpreter {
 
   /**
    * Executes the contents of a block statement.
+   *
+   * During execution, the interpreter's environment is replaced with the given
+   * {@linkcode environment}, and is restored when the block is finished.
    * @param {Iterable<Stmt>} statements
    * @param {Environment} environment
    */
-  #executeBlock(statements, environment) {
+  executeBlock(statements, environment) {
     const previous = this.#environment;
     this.#environment = environment;
     try {
@@ -81,7 +95,7 @@ export class Interpreter {
    * @param {Block} stmt
    */
   visitBlock(stmt) {
-    this.#executeBlock(stmt.statements, new Environment(this.#environment));
+    this.executeBlock(stmt.statements, new Environment(this.#environment));
   }
 
   /**
@@ -90,6 +104,15 @@ export class Interpreter {
    */
   visitExpression(stmt) {
     this.#evaluate(stmt.expression);
+  }
+
+  /**
+   * @param {FunctionDecl} stmt
+   */
+  visitFunctionDecl(stmt) {
+    const fn = new LoxFunction(stmt, this.#environment);
+    this.#environment.define(stmt.name.lexeme, fn);
+    return null;
   }
 
   /**
@@ -112,6 +135,15 @@ export class Interpreter {
   visitPrint(stmt) {
     const value = this.#evaluate(stmt.expression);
     console.log(stringify(value));
+  }
+
+  /**
+   * @param {Return} stmt
+   * @returns {void}
+   */
+  visitReturn(stmt) {
+    const value = stmt.value ? this.#evaluate(stmt.value) : null;
+    throw new ReturnValue(value);
   }
 
   /**
@@ -205,10 +237,39 @@ export class Interpreter {
         const [l, r] = checkNumberOperands(expr.operator, left, right);
         return l / r;
       }
+      case "COMMA": {
+        return right;
+      }
     }
 
     // Unreachable
     throw new Error(`Unexpected binary operator: ${expr.operator.type}`);
+  }
+
+  /**
+   * @param {Call} expr
+   * @returns {LoxValue}
+   */
+  visitCall(expr) {
+    const callee = this.#evaluate(expr.callee);
+
+    const args = expr.args.map((expr) => this.#evaluate(expr));
+
+    if (!(callee instanceof Callable)) {
+      throw new RuntimeError(
+        expr.paren,
+        "Can only call functions and classes.",
+      );
+    }
+
+    if (args.length !== callee.arity()) {
+      throw new RuntimeError(
+        expr.paren,
+        `Expected ${callee.arity()} arguments but got ${args.length}.`,
+      );
+    }
+
+    return callee.call(this, args);
   }
 
   /**

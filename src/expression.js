@@ -1,10 +1,14 @@
-/** @import { Token } from './token.js' */
+/**
+ * @import { Token } from './token.js';
+ * @import { LoxValue } from "./value.js";
+ */
 
 /**
  * @template R Value returned by the visitor methods.
  * @typedef {object} ExprVisitor
  * @property {(expr: Assign) => R} visitAssign
  * @property {(expr: Binary) => R} visitBinary
+ * @property {(expr: Call) => R} visitCall
  * @property {(expr: Grouping) => R} visitGrouping
  * @property {(expr: Literal) => R} visitLiteral
  * @property {(expr: Logical) => R} visitLogical
@@ -79,6 +83,36 @@ export class Binary extends Expr {
    */
   accept(visitor) {
     return visitor.visitBinary(this);
+  }
+}
+
+/**
+ * AST node for the function call expression.
+ */
+export class Call extends Expr {
+  /**
+   * @param {Expr} callee
+   * @param {Token} paren
+   * @param {readonly Expr[]} args
+   */
+  constructor(callee, paren, args) {
+    super();
+    /** @readonly */
+    this.callee = callee;
+    /** @readonly */
+    this.paren = paren;
+    /** @readonly */
+    this.args = args;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {ExprVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitCall(this);
   }
 }
 

@@ -1,6 +1,9 @@
 import { RuntimeError } from "./runtime-error.js";
 
-/** @import { Token } from './token.js' */
+/**
+ * @import { Token } from './token.js';
+ * @import { LoxValue } from "./value.js";
+ */
 
 /** Placeholder value for unitialized variables. */
 const UNINITIALIZED = Symbol("UNINITIALIZED");
