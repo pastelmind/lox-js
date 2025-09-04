@@ -3,9 +3,11 @@
 /** @import { Token } from './token.js'; */
 /** @import { TokenType } from './token-type.js' */
 
+import { FUNCTION_MAX_ARGS } from "./constants.js";
 import {
   Assign,
   Binary,
+  Call,
   Grouping,
   Literal,
   Logical,
@@ -13,7 +15,17 @@ import {
   Unary,
   Variable,
 } from "./expression.js";
-import { Block, Expression, If, Print, Stmt, Var, While } from "./statement.js";
+import {
+  Block,
+  Expression,
+  FunctionDecl,
+  If,
+  Print,
+  Return,
+  Stmt,
+  Var,
+  While,
+} from "./statement.js";
 
 export class Parser {
   /** @readonly */
@@ -192,6 +204,9 @@ export class Parser {
    */
   #declaration() {
     try {
+      if (this.#match("FUN")) {
+        return this.#functionDeclaration("function");
+      }
       if (this.#match("VAR")) {
         return this.#varDeclaration();
       }
@@ -230,6 +245,10 @@ export class Parser {
 
     if (this.#match("PRINT")) {
       return this.#printStatement();
+    }
+
+    if (this.#match("RETURN")) {
+      return this.#returnStatement();
     }
 
     if (this.#match("WHILE")) {
@@ -315,6 +334,21 @@ export class Parser {
   }
 
   /**
+   * Parses a return statement.
+   * @returns {Return}
+   */
+  #returnStatement() {
+    const keyword = this.#previous();
+    let value;
+    if (!this.#check("SEMICOLON")) {
+      value = this.#expression();
+    }
+
+    this.#consume("SEMICOLON", "Expected ';' after return value.");
+    return new Return(keyword, value);
+  }
+
+  /**
    * Parses a while-statement.
    * @returns {While}
    */
@@ -335,6 +369,38 @@ export class Parser {
     const expr = this.#expression();
     this.#consume("SEMICOLON", "Expected ';' after expression.");
     return new Expression(expr);
+  }
+
+  /**
+   * Parses a function declaration statement.
+   * @param {string} kind
+   * @returns {FunctionDecl}
+   */
+  #functionDeclaration(kind) {
+    const name = this.#consume("IDENTIFIER", `Expected ${kind} name.`);
+    this.#consume("LEFT_PAREN", `Expected '(' after ${kind} name.`);
+
+    const parameters = [];
+    if (!this.#check("RIGHT_PAREN")) {
+      do {
+        if (parameters.length >= FUNCTION_MAX_ARGS) {
+          this.#error(
+            this.#peek(),
+            `Can't have more than ${FUNCTION_MAX_ARGS} parameters.`,
+          );
+        }
+
+        parameters.push(
+          this.#consume("IDENTIFIER", "Expected parameter name."),
+        );
+      } while (this.#match("COMMA"));
+    }
+    this.#consume("RIGHT_PAREN", `Expected ')' after parameters.`);
+
+    this.#consume("LEFT_BRACE", `Expected '{' before ${kind} body.`);
+    const body = this.#block();
+
+    return new FunctionDecl(name, parameters, body);
   }
 
   /**
@@ -531,7 +597,44 @@ export class Parser {
       return new Unary(operator, right);
     }
 
-    return this.#primary();
+    return this.#call();
+  }
+
+  /**
+   * Parses a function call expression.
+   * @returns {Expr}
+   */
+  #call() {
+    let expr = this.#primary();
+
+    while (true) {
+      if (this.#match("LEFT_PAREN")) {
+        expr = this.#finishCall(expr);
+      } else {
+        break;
+      }
+    }
+
+    return expr;
+  }
+
+  /**
+   * Finishes parsing a (possibly chained) function call expression.
+   * @param {Expr} callee
+   */
+  #finishCall(callee) {
+    const args = [];
+    if (!this.#check("RIGHT_PAREN")) {
+      do {
+        if (args.length >= FUNCTION_MAX_ARGS) {
+          this.#error(this.#peek(), "Cannot have more than 255 arguments.");
+        }
+        args.push(this.#ternary());
+      } while (this.#match("COMMA"));
+    }
+
+    const paren = this.#consume("RIGHT_PAREN", "Expected ')' after arguments.");
+    return new Call(callee, paren, args);
   }
 
   /**

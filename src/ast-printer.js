@@ -2,6 +2,7 @@
  * @import {
  *   Assign,
  *   Binary,
+ *   Call,
  *   Expr,
  *   ExprVisitor,
  *   Grouping,
@@ -39,6 +40,14 @@ export class AstPrinter {
    */
   visitBinary(expr) {
     return `(${expr.operator.lexeme} ${this.print(expr.left)} ${this.print(expr.right)})`;
+  }
+
+  /**
+   * @param {Call} expr
+   * @returns {string}
+   */
+  visitCall(expr) {
+    return `(call ${this.print(expr.callee)}${expr.args.map((arg) => ` ${this.print(arg)}`).join("")})`;
   }
 
   /**

@@ -8,8 +8,10 @@
  * @typedef {object} StmtVisitor
  * @property {(expr: Block) => R} visitBlock Visits the block statement
  * @property {(expr: Expression) => R} visitExpression Visits the expression statement
+ * @property {(expr: FunctionDecl) => R} visitFunctionDecl Visits the function declaration statement
  * @property {(expr: If) => R} visitIf Visits the if-statement
  * @property {(expr: Print) => R} visitPrint Visits the print statement
+ * @property {(expr: Return) => R} visitReturn Visits the return statement
  * @property {(expr: Var) => R} visitVar Visits the variable declaration statement
  * @property {(expr: While) => R} visitWhile Visits the while-statement
  */
@@ -108,6 +110,36 @@ export class Expression extends Stmt {
 }
 
 /**
+ * AST node for the function declaration statement.
+ */
+export class FunctionDecl extends Stmt {
+  /**
+   * @param {Token} name
+   * @param {readonly Token[]} params
+   * @param {readonly Stmt[]} body
+   */
+  constructor(name, params, body) {
+    super();
+    /** @readonly */
+    this.name = name;
+    /** @readonly */
+    this.params = params;
+    /** @readonly */
+    this.body = body;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {StmtVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitFunctionDecl(this);
+  }
+}
+
+/**
  * AST node for the print statement.
  */
 export class Print extends Stmt {
@@ -128,6 +160,33 @@ export class Print extends Stmt {
    */
   accept(visitor) {
     return visitor.visitPrint(this);
+  }
+}
+
+/**
+ * AST node for the return statement.
+ */
+export class Return extends Stmt {
+  /**
+   * @param {Token} keyword
+   * @param {Expr=} value
+   */
+  constructor(keyword, value) {
+    super();
+    /** @readonly */
+    this.keyword = keyword;
+    /** @readonly */
+    this.value = value;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {StmtVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitReturn(this);
   }
 }
 

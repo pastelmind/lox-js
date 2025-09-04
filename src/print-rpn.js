@@ -4,6 +4,7 @@ import { Token } from "./token.js";
 /**
  * @import {
  *   Assign,
+ *   Call,
  *   Expr,
  *   ExprVisitor,
  *   Logical,
@@ -37,6 +38,14 @@ class RpnPrinter {
    */
   visitBinary(expr) {
     return `${this.print(expr.left)} ${this.print(expr.right)} ${expr.operator.lexeme}`;
+  }
+
+  /**
+   * @param {Call} expr
+   * @returns {string}
+   */
+  visitCall(expr) {
+    return `(${this.print(expr.callee)}${expr.args.map((arg) => ` ${this.print(arg)}`).join("")} call)`;
   }
 
   /**
