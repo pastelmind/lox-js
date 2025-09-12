@@ -42,6 +42,60 @@ export class Environment {
   }
 
   /**
+   * Returns the ancestor of this environment by jumping up the chain of parent
+   * environments {@linkcode distance} times.
+   * @param {number} distance
+   */
+  #ancestor(distance) {
+    /** @type {Environment} */
+    let environment = this;
+
+    for (let i = 0; i < distance; i++) {
+      const parent = environment.#enclosing;
+      if (!parent) {
+        throw new Error(`Environment chain too short. (distance: ${distance})`);
+      }
+      environment = parent;
+    }
+
+    return environment;
+  }
+
+  /**
+   * Returns a variable's value from this environment or one of its ancestors.
+   * @param {number} distance Nonnegative integer. Describes how many scopes to
+   *    "jump" up the chain of environments to get the variable.
+   * @param {string} name Variable name
+   * @returns {LoxValue}
+   */
+  getAt(distance, name) {
+    const value = this.#ancestor(distance).#values.get(name);
+
+    if (value === undefined) {
+      // This should never happen if the Resolver works correctly.
+      throw new Error(`Variable '${name}' is not defined.`);
+    }
+
+    if (value === UNINITIALIZED) {
+      // This should never happen if the Resolver works correctly.
+      throw new Error(`Variable '${name}' is not initialized.`);
+    }
+
+    return value;
+  }
+
+  /**
+   * Assigns a value to a variable in this environment or one of its ancestors.
+   * @param {number} distance Nonnegative integer. Describes how many scopes to
+   *    "jump" up the chain of environments to assign the variable.
+   * @param {Token} name Variable name
+   * @param {LoxValue} value
+   */
+  assignAt(distance, name, value) {
+    this.#ancestor(distance).#values.set(name.lexeme, value);
+  }
+
+  /**
    * Returns a variable's value.
    * @param {Token} name
    * @returns {LoxValue}

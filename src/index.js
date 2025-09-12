@@ -4,6 +4,7 @@ import { parseArgs } from "node:util";
 import { Interpreter } from "./interpreter.js";
 import { Parser } from "./parser.js";
 import { Reporter } from "./reporter.js";
+import { Resolver } from "./resolver.js";
 import { Scanner } from "./scanner.js";
 
 const interpreter = new Interpreter();
@@ -98,6 +99,14 @@ function run(source, reporter, allowSingleExpr = false) {
   const statements = parser.parse();
 
   // Stop if there was a syntax error
+  if (reporter.hadError) {
+    return;
+  }
+
+  const resolver = new Resolver(interpreter, reporter);
+  resolver.resolve(...statements);
+
+  // Stop if there was a resolution error
   if (reporter.hadError) {
     return;
   }

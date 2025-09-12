@@ -21,6 +21,13 @@ export class Interpreter {
   /** @readonly */
   #globals = new Environment();
   #environment = this.#globals;
+  /**
+   * Stores the resolution information for all variable expressions that resolve
+   * to a non-global variable.
+   * @type {Map<Expr, number>}
+   * @readonly
+   */
+  #locals = new Map();
 
   constructor() {
     this.#globals.define("clock", new ClockFunction());
@@ -69,6 +76,24 @@ export class Interpreter {
    */
   #execute(stmt) {
     stmt.accept(this);
+  }
+
+  /**
+   * Stores the variable resolution information for the given expression.
+   * This method is meant to be called by the Resolver.
+   *
+   * @param {Expr} expr Expression that describes a variable.
+   *    This is typically a variable access expression or an assignment
+   *    expression.
+   * @param {number} depth Nonnegative integer. Describes how many scopes to
+   *    "jump" up the chain of environments to resolve this variable.
+   */
+  resolve(expr, depth) {
+    const prevSize = this.#locals.size;
+    this.#locals.set(expr, depth);
+    if (this.#locals.size === prevSize) {
+      throw new Error("Variable expression already resolved.");
+    }
   }
 
   /**
@@ -181,7 +206,14 @@ export class Interpreter {
    */
   visitAssign(expr) {
     const value = this.#evaluate(expr.value);
-    this.#environment.assign(expr.name, value);
+
+    const distance = this.#locals.get(expr);
+    if (distance !== undefined) {
+      this.#environment.assignAt(distance, expr.name, value);
+    } else {
+      this.#globals.assign(expr.name, value);
+    }
+
     return value;
   }
 
@@ -339,7 +371,20 @@ export class Interpreter {
    * @returns {LoxValue}
    */
   visitVariable(expr) {
-    return this.#environment.get(expr.name);
+    return this.#lookupVariable(expr.name, expr);
+  }
+
+  /**
+   * @param {Token} name
+   * @param {Variable} expr
+   * @returns {LoxValue}
+   */
+  #lookupVariable(name, expr) {
+    const distance = this.#locals.get(expr);
+    if (distance !== undefined) {
+      return this.#environment.getAt(distance, name.lexeme);
+    }
+    return this.#globals.get(name);
   }
 }
 
