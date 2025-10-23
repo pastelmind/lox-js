@@ -181,20 +181,8 @@ export class Parser {
    * @returns {ParseError}
    */
   #error(token, message) {
-    this.#reportError(token, message);
+    this.#reporter.error(token, message);
     return new ParseError();
-  }
-
-  /**
-   * @param {Token} token
-   * @param {string} message
-   */
-  #reportError(token, message) {
-    if (token.type === "EOF") {
-      this.#reporter.report(token.line, " at end", message);
-    } else {
-      this.#reporter.report(token.line, ` at '${token.lexeme}'`, message);
-    }
   }
 
   /**

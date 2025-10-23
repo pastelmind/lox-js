@@ -1,4 +1,7 @@
-/** @import { RuntimeError } from "./runtime-error.js"; */
+/**
+ * @import { RuntimeError } from "./runtime-error.js"
+ * @import { Token } from "./token.js"
+ */
 
 export class Reporter {
   /**
@@ -17,11 +20,17 @@ export class Reporter {
   }
 
   /**
-   * @param {number} line
+   * @param {number | Token} lineOrToken
    * @param {string} message
    */
-  error(line, message) {
-    this.report(line, "", message);
+  error(lineOrToken, message) {
+    if (typeof lineOrToken === "number") {
+      this.report(lineOrToken, "", message);
+    } else if (lineOrToken.type === "EOF") {
+      this.report(lineOrToken.line, " at end", message);
+    } else {
+      this.report(lineOrToken.line, ` at '${lineOrToken.lexeme}'`, message);
+    }
   }
 
   /**
