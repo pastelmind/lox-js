@@ -63,7 +63,11 @@ export class AstPrinter {
    * @returns {string}
    */
   visitLiteral(expr) {
-    return expr.value === null ? "nil" : String(expr.value);
+    return expr.value === null
+      ? "nil"
+      : typeof expr.value === "string"
+        ? `"${expr.value}"`
+        : String(expr.value);
   }
 
   /**
