@@ -7,7 +7,10 @@ import { Token } from "./token.js";
  *   Call,
  *   Expr,
  *   ExprVisitor,
+ *   GetExpr,
  *   Logical,
+ *   SetExpr,
+ *   This,
  *   Variable,
  * } from './expression.js'
  */
@@ -49,6 +52,14 @@ class RpnPrinter {
   }
 
   /**
+   * @param {GetExpr} expr
+   * @returns {string}
+   */
+  visitGetExpr(expr) {
+    return `(${this.print(expr.object)} ${expr.name.lexeme} get)`;
+  }
+
+  /**
    * @param {Grouping} expr
    * @returns {string}
    */
@@ -77,6 +88,14 @@ class RpnPrinter {
   }
 
   /**
+   * @param {SetExpr} expr
+   * @returns {string}
+   */
+  visitSetExpr(expr) {
+    return `(${this.print(expr.object)}.${expr.name.lexeme} ${this.print(expr.value)} set)`;
+  }
+
+  /**
    * @param {Unary} expr
    * @returns {string}
    */
@@ -90,6 +109,14 @@ class RpnPrinter {
    */
   visitTernary(expr) {
     return `(? ${this.print(expr.cond)} ${this.print(expr.trueExpr)} ${this.print(expr.falseExpr)})`;
+  }
+
+  /**
+   * @param {This} expr
+   * @returns {string}
+   */
+  visitThis(expr) {
+    return expr.keyword.lexeme;
   }
 
   /**

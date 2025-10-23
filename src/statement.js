@@ -7,6 +7,7 @@
  * @template R Value returned by the visitor methods.
  * @typedef {object} StmtVisitor
  * @property {(expr: Block) => R} visitBlock Visits the block statement
+ * @property {(expr: Class) => R} visitClass Visits the block statement
  * @property {(expr: Expression) => R} visitExpression Visits the expression statement
  * @property {(expr: FunctionDecl) => R} visitFunctionDecl Visits the function declaration statement
  * @property {(expr: If) => R} visitIf Visits the if-statement
@@ -52,6 +53,33 @@ export class Block extends Stmt {
    */
   accept(visitor) {
     return visitor.visitBlock(this);
+  }
+}
+
+/**
+ * AST node for the class declaration statement.
+ */
+export class Class extends Stmt {
+  /**
+   * @param {Token} name
+   * @param {readonly FunctionDecl[]} methods
+   */
+  constructor(name, methods) {
+    super();
+    /** @readonly */
+    this.name = name;
+    /** @readonly */
+    this.methods = methods;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {StmtVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitClass(this);
   }
 }
 

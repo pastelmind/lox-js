@@ -5,10 +5,13 @@
  *   Call,
  *   Expr,
  *   ExprVisitor,
+ *   GetExpr,
  *   Grouping,
  *   Literal,
  *   Logical,
+ *   SetExpr,
  *   Ternary,
+ *   This,
  *   Unary,
  *   Variable,
  * } from './expression.js'
@@ -51,6 +54,14 @@ export class AstPrinter {
   }
 
   /**
+   * @param {GetExpr} expr
+   * @returns {string}
+   */
+  visitGetExpr(expr) {
+    return `(get ${this.print(expr.object)}.${expr.name.lexeme})`;
+  }
+
+  /**
    * @param {Grouping} expr
    * @returns {string}
    */
@@ -79,6 +90,14 @@ export class AstPrinter {
   }
 
   /**
+   * @param {SetExpr} expr
+   * @returns {string}
+   */
+  visitSetExpr(expr) {
+    return `(set ${this.print(expr.object)}.${expr.name.lexeme} ${this.print(expr.value)})`;
+  }
+
+  /**
    * @param {Unary} expr
    * @returns {string}
    */
@@ -92,6 +111,14 @@ export class AstPrinter {
    */
   visitTernary(expr) {
     return `(${this.print(expr.cond)} ? ${this.print(expr.trueExpr)} : ${this.print(expr.falseExpr)})`;
+  }
+
+  /**
+   * @param {This} expr
+   * @returns {string}
+   */
+  visitThis(expr) {
+    return expr.keyword.lexeme;
   }
 
   /**

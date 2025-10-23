@@ -9,11 +9,14 @@
  * @property {(expr: Assign) => R} visitAssign
  * @property {(expr: Binary) => R} visitBinary
  * @property {(expr: Call) => R} visitCall
+ * @property {(expr: GetExpr) => R} visitGetExpr
  * @property {(expr: Grouping) => R} visitGrouping
  * @property {(expr: Literal) => R} visitLiteral
  * @property {(expr: Logical) => R} visitLogical
+ * @property {(expr: SetExpr) => R} visitSetExpr
  * @property {(expr: Unary) => R} visitUnary
  * @property {(expr: Ternary) => R} visitTernary
+ * @property {(expr: This) => R} visitThis
  * @property {(expr: Variable) => R} visitVariable
  */
 
@@ -116,6 +119,39 @@ export class Call extends Expr {
   }
 }
 
+/**
+ * AST node for the property access expression (AKA "get expression").
+ */
+export class GetExpr extends Expr {
+  /**
+   * @param {Expr} object Expression that evaluates to a Lox object
+   * @param {Token} name Property name to access
+   */
+  constructor(object, name) {
+    super();
+    /**
+     * Expression that evaluates to a Lox object
+     * @readonly
+     */
+    this.object = object;
+    /**
+     * Property name to access
+     * @readonly
+     */
+    this.name = name;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {ExprVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitGetExpr(this);
+  }
+}
+
 export class Grouping extends Expr {
   /**
    * @param {Expr} expression
@@ -185,6 +221,45 @@ export class Logical extends Expr {
   }
 }
 
+/**
+ * AST node for the property assignment expression (AKA "set expression").
+ */
+export class SetExpr extends Expr {
+  /**
+   * @param {Expr} object Expression that evaluates to a Lox object
+   * @param {Token} name Property name to assign to
+   * @param {Expr} value Expression that evaluates to the value to assign
+   */
+  constructor(object, name, value) {
+    super();
+    /**
+     * Expression that evaluates to a Lox object
+     * @readonly
+     */
+    this.object = object;
+    /**
+     * Property name to assign to
+     * @readonly
+     */
+    this.name = name;
+    /**
+     * Expression that evaluates to the value to assign
+     * @readonly
+     */
+    this.value = value;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {ExprVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitSetExpr(this);
+  }
+}
+
 export class Unary extends Expr {
   /**
    * @param {Token} operator
@@ -232,6 +307,30 @@ export class Ternary extends Expr {
    */
   accept(visitor) {
     return visitor.visitTernary(this);
+  }
+}
+
+/**
+ * AST node for the this-expression.
+ */
+export class This extends Expr {
+  /**
+   * @param {Token} keyword
+   */
+  constructor(keyword) {
+    super();
+    /** @readonly */
+    this.keyword = keyword;
+  }
+
+  /**
+   * @override
+   * @template R
+   * @param {ExprVisitor<R>} visitor
+   * @returns {R}
+   */
+  accept(visitor) {
+    return visitor.visitThis(this);
   }
 }
 

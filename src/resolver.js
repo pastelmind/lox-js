@@ -1,12 +1,40 @@
 /**
- * @import { Assign, Binary, Call, Expr, ExprVisitor, Grouping, Literal, Logical, Ternary, Unary, Variable } from "./expression.js";
- * @import { Interpreter } from "./interpreter.js";
+ * @import {
+ *   Assign,
+ *   Binary,
+ *   Call,
+ *   Expr,
+ *   ExprVisitor,
+ *   GetExpr,
+ *   Grouping,
+ *   Literal,
+ *   Logical,
+ *   SetExpr,
+ *   Ternary,
+ *   This,
+ *   Unary,
+ *   Variable,
+ * } from "./expression.js";
+ * @import { Interpreter, ResolvableExpr } from "./interpreter.js";
  * @import { Reporter } from "./reporter.js";
- * @import { Block, Expression, FunctionDecl, If, Print, Return, Stmt, StmtVisitor, Var, While } from "./statement.js";
+ * @import {
+ *   Block,
+ *   Class,
+ *   Expression,
+ *   FunctionDecl,
+ *   If,
+ *   Print,
+ *   Return,
+ *   Stmt,
+ *   StmtVisitor,
+ *   Var,
+ *   While,
+ * } from "./statement.js";
  * @import { Token } from "./token.js";
  */
 
-/** @typedef {'none' | 'function'} FunctionType */
+/** @typedef {'none' | 'class'} ClassType */
+/** @typedef {'none' | 'function' | 'initializer' | 'method'} FunctionType */
 
 /**
  * Resolves variable declarations and usages and informs the interpreter.
@@ -42,6 +70,12 @@ export class Resolver {
   #currentFunction = "none";
 
   /**
+   * Tracks whether the resolver is processing code inside a class body.
+   * @type {ClassType}
+   */
+  #currentClass = "none";
+
+  /**
    * @param {Interpreter} interpreter
    * @param {Reporter} reporter
    */
@@ -59,6 +93,29 @@ export class Resolver {
     this.#beginScope();
     this.resolve(...stmt.statements);
     this.#endScope();
+  }
+
+  /**
+   * @param {Class} stmt
+   */
+  visitClass(stmt) {
+    const enclosingClass = this.#currentClass;
+    this.#currentClass = "class";
+
+    this.#declare(stmt.name);
+    this.#define(stmt.name);
+
+    const variablesInScope = this.#beginScope();
+    variablesInScope.set("this", true);
+
+    for (const method of stmt.methods) {
+      const declaration =
+        method.name.lexeme === "init" ? "initializer" : "method";
+      this.#resolveFunction(method, declaration);
+    }
+
+    this.#endScope();
+    this.#currentClass = enclosingClass;
   }
 
   /**
@@ -105,6 +162,13 @@ export class Resolver {
     }
 
     if (stmt.value) {
+      if (this.#currentFunction === "initializer") {
+        this.#reporter.error(
+          stmt.keyword,
+          "Can't return a value from an initializer.",
+        );
+      }
+
       this.resolve(stmt.value);
     }
   }
@@ -150,6 +214,13 @@ export class Resolver {
   }
 
   /**
+   * @param {GetExpr} expr
+   */
+  visitGetExpr(expr) {
+    this.resolve(expr.object);
+  }
+
+  /**
    * @param {Grouping} expr
    */
   visitGrouping(expr) {
@@ -171,10 +242,29 @@ export class Resolver {
   }
 
   /**
+   * @param {SetExpr} expr
+   */
+  visitSetExpr(expr) {
+    this.resolve(expr.value, expr.object);
+  }
+
+  /**
    * @param {Ternary} expr
    */
   visitTernary(expr) {
     this.resolve(expr.cond, expr.trueExpr, expr.falseExpr);
+  }
+
+  /**
+   * @param {This} expr
+   */
+  visitThis(expr) {
+    if (this.#currentClass === "none") {
+      this.#reporter.error(expr.keyword, "Can't use 'this' outside of class.");
+      return;
+    }
+
+    this.#resolveLocal(expr, expr.keyword);
   }
 
   /**
@@ -233,9 +323,12 @@ export class Resolver {
 
   /**
    * Starts a new scope.
+   * @returns {Map<string, boolean>} Map of variables in the new scope.
    */
   #beginScope() {
-    this.#scopes.push(new Map());
+    const variablesInScope = new Map();
+    this.#scopes.push(variablesInScope);
+    return variablesInScope;
   }
 
   /**
@@ -295,7 +388,7 @@ export class Resolver {
   /**
    * Resolves a variable {@linkcode name} in the expression {@linkcode expr} and
    * feeds the resolution information to the interpreter.
-   * @param {Expr} expr
+   * @param {ResolvableExpr} expr
    * @param {Token} name
    */
   #resolveLocal(expr, name) {

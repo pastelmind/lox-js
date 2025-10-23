@@ -1,17 +1,48 @@
 /**
- * @import { Assign, Binary, Call, Expr, ExprVisitor, Grouping, Literal, Logical, Ternary, Unary, Variable } from "./expression.js";
+ * @import {
+ *   Assign,
+ *   Binary,
+ *   Call,
+ *   Expr,
+ *   ExprVisitor,
+ *   GetExpr,
+ *   Grouping,
+ *   Literal,
+ *   Logical,
+ *   SetExpr,
+ *   Ternary,
+ *   This,
+ *   Unary,
+ *   Variable,
+ * } from "./expression.js";
  * @import { Reporter } from "./reporter.js";
- * @import { Block, Expression, FunctionDecl, If, Print, Return, Stmt, StmtVisitor, Var, While } from "./statement.js";
+ * @import {
+ *   Block,
+ *   Class,
+ *   Expression,
+ *   FunctionDecl,
+ *   If,
+ *   Print,
+ *   Return,
+ *   Stmt,
+ *   StmtVisitor,
+ *   Var,
+ *   While,
+ * } from "./statement.js";
  * @import { Token } from "./token.js";
  * @import { LoxValue } from "./value.js";
  */
 
 import { Callable } from "./callable.js";
+import { LoxClass } from "./class.js";
 import { ClockFunction } from "./clock.js";
 import { Environment } from "./environment.js";
 import { LoxFunction } from "./function.js";
+import { LoxInstance } from "./instance.js";
 import { ReturnValue } from "./return.js";
 import { RuntimeError } from "./runtime-error.js";
+
+/** @typedef {Assign | This | Variable} ResolvableExpr */
 
 /**
  * @implements {StmtVisitor<void>}
@@ -24,7 +55,7 @@ export class Interpreter {
   /**
    * Stores the resolution information for all variable expressions that resolve
    * to a non-global variable.
-   * @type {Map<Expr, number>}
+   * @type {Map<ResolvableExpr, number>}
    * @readonly
    */
   #locals = new Map();
@@ -82,9 +113,7 @@ export class Interpreter {
    * Stores the variable resolution information for the given expression.
    * This method is meant to be called by the Resolver.
    *
-   * @param {Expr} expr Expression that describes a variable.
-   *    This is typically a variable access expression or an assignment
-   *    expression.
+   * @param {ResolvableExpr} expr Expression to resolve
    * @param {number} depth Nonnegative integer. Describes how many scopes to
    *    "jump" up the chain of environments to resolve this variable.
    */
@@ -124,6 +153,27 @@ export class Interpreter {
   }
 
   /**
+   * @param {Class} stmt
+   */
+  visitClass(stmt) {
+    this.#environment.define(stmt.name.lexeme);
+
+    /** @type {Map<string, LoxFunction>} */
+    const methods = new Map();
+    for (const method of stmt.methods) {
+      const fn = new LoxFunction(
+        method,
+        this.#environment,
+        method.name.lexeme === "init",
+      );
+      methods.set(method.name.lexeme, fn);
+    }
+
+    const klass = new LoxClass(stmt.name.lexeme, methods);
+    this.#environment.assign(stmt.name, klass);
+  }
+
+  /**
    * @param {Expression} stmt
    * @returns {void}
    */
@@ -135,7 +185,8 @@ export class Interpreter {
    * @param {FunctionDecl} stmt
    */
   visitFunctionDecl(stmt) {
-    const fn = new LoxFunction(stmt, this.#environment);
+    // Regular functions can never be initializers.
+    const fn = new LoxFunction(stmt, this.#environment, false);
     this.#environment.define(stmt.name.lexeme, fn);
     return null;
   }
@@ -305,6 +356,18 @@ export class Interpreter {
   }
 
   /**
+   * @param {GetExpr} expr
+   * @returns {LoxValue}
+   */
+  visitGetExpr(expr) {
+    const object = this.#evaluate(expr.object);
+    if (!(object instanceof LoxInstance)) {
+      throw new RuntimeError(expr.name, "Only instances have properties.");
+    }
+    return object.get(expr.name);
+  }
+
+  /**
    * @param {Grouping} expr
    * @returns {LoxValue}
    */
@@ -339,6 +402,27 @@ export class Interpreter {
   }
 
   /**
+   * @param {SetExpr} expr
+   * @returns {LoxValue}
+   */
+  visitSetExpr(expr) {
+    // Evaluate the left-hand expression.
+    const object = this.#evaluate(expr.object);
+
+    // Ensure that the l-value is a class instance.
+    if (!(object instanceof LoxInstance)) {
+      throw new RuntimeError(expr.name, "Only instances have fields.");
+    }
+
+    // Evaluate the right-hand expression.
+    // Note: This must be performed after evaluating the left-hand expression,
+    // because it may otherwise affect the evaluation of the l-value.
+    const value = this.#evaluate(expr.value);
+    object.set(expr.name, value);
+    return value;
+  }
+
+  /**
    * @param {Unary} expr
    * @returns {LoxValue}
    */
@@ -367,6 +451,14 @@ export class Interpreter {
   }
 
   /**
+   * @param {This} expr
+   * @returns {LoxValue}
+   */
+  visitThis(expr) {
+    return this.#lookupVariable(expr.keyword, expr);
+  }
+
+  /**
    * @param {Variable} expr
    * @returns {LoxValue}
    */
@@ -376,7 +468,7 @@ export class Interpreter {
 
   /**
    * @param {Token} name
-   * @param {Variable} expr
+   * @param {This | Variable} expr
    * @returns {LoxValue}
    */
   #lookupVariable(name, expr) {

@@ -1,0 +1,7 @@
+class Foo {
+  init() {
+    return "something else";
+  }
+}
+
+print "Oops, this code is supposed to fail static analysis";

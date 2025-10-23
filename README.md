@@ -6,10 +6,12 @@ An interpreter for the Lox language, written in JavaScript with TypeScript type 
 
 ```ebnf
 program     -> declaration* EOF ;
-declaration -> fun_decl
+declaration -> class_decl
+             | fun_decl
              | var_decl
              | statement ;
 
+class_decl -> "class" IDENTIFIER "{" function* "}" ;
 fun_decl   -> "fun" function ;
 function   -> IDENTIFIER "(" parameters? ")" block ;
 parameters -> IDENTIFIER ( "," IDENTIFIER )* ;
@@ -36,7 +38,7 @@ block      -> "{" declaration* "}" ;
 expression -> comma ;
 comma      -> ternary ( "," ternary ) ;
 ternary    -> assignment ( "?" assignment ":" assignment )* ;
-assignment -> IDENTIFIER "=" assignment
+assignment -> ( call "." )? IDENTIFIER "=" assignment
             | logic_or ;
 logic_or   -> logic_and ( "or" logic_and )* ;
 logic_and  -> equality ( "and" equality )* ;
@@ -46,7 +48,7 @@ term       -> factor ( ( "-" | "+" ) factor )* ;
 factor     -> unary ( ( "/" | "*" ) unary )* ;
 unary      -> ( "-" | "!" ) unary
             | call ;
-call       -> primary ( "(" arguments? ")" )* ;
+call       -> primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 arguments  -> ternary ( "," ternary )* ;
 primary    -> NUMBER | STRING | "false" | "true" | "nil"
             | "(" expression ")"

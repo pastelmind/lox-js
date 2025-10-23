@@ -1,0 +1,6 @@
+fun notAMethod() {
+  print this;
+}
+
+print "Oops, this code is supposed to fail static analysis";
+

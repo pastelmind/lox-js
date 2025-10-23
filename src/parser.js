@@ -8,15 +8,19 @@ import {
   Assign,
   Binary,
   Call,
+  GetExpr,
   Grouping,
   Literal,
   Logical,
+  SetExpr,
   Ternary,
+  This,
   Unary,
   Variable,
 } from "./expression.js";
 import {
   Block,
+  Class,
   Expression,
   FunctionDecl,
   If,
@@ -192,6 +196,9 @@ export class Parser {
    */
   #declaration() {
     try {
+      if (this.#match("CLASS")) {
+        return this.#classDeclaration();
+      }
       if (this.#match("FUN")) {
         return this.#functionDeclaration("function");
       }
@@ -207,6 +214,24 @@ export class Parser {
 
       throw error;
     }
+  }
+
+  /**
+   * Parses a class declaration statement.
+   * @returns {Class}
+   */
+  #classDeclaration() {
+    const name = this.#consume("IDENTIFIER", "Expected class name.");
+    this.#consume("LEFT_BRACE", "Expected '{' before class body.");
+
+    /** @type {FunctionDecl[]} */
+    const methods = [];
+    while (!this.#check("RIGHT_BRACE") && !this.#isAtEnd()) {
+      methods.push(this.#functionDeclaration("method"));
+    }
+
+    this.#consume("RIGHT_BRACE", "Expected '}' after class body.");
+    return new Class(name, methods);
   }
 
   /**
@@ -472,9 +497,15 @@ export class Parser {
       const value = this.#assignment();
 
       // Check if the left-hand expression is a storage location.
+      // This includes variables and get-expressions.
+
       if (expr instanceof Variable) {
         const name = expr.name;
         return new Assign(name, value);
+      }
+
+      if (expr instanceof GetExpr) {
+        return new SetExpr(expr.object, expr.name, value);
       }
 
       // Report the error but do not throw, since the parser is not in a
@@ -598,6 +629,12 @@ export class Parser {
     while (true) {
       if (this.#match("LEFT_PAREN")) {
         expr = this.#finishCall(expr);
+      } else if (this.#match("DOT")) {
+        const name = this.#consume(
+          "IDENTIFIER",
+          "Expected property name after '.'.",
+        );
+        expr = new GetExpr(expr, name);
       } else {
         break;
       }
@@ -643,6 +680,10 @@ export class Parser {
 
     if (this.#match("NIL")) {
       return new Literal(null);
+    }
+
+    if (this.#match("THIS")) {
+      return new This(this.#previous());
     }
 
     if (this.#match("IDENTIFIER")) {
